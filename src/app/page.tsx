@@ -9,6 +9,7 @@ import { Heart, Loader2 } from "lucide-react";
 import { useAuth, SignInButton, UserButton } from "@clerk/nextjs";
 import { NavBar } from "@/components/navbar";
 import toast, { Toaster } from "react-hot-toast";
+import Footer from "@/components/Footer";
 
 interface CryptoCoin {
   id: string;
@@ -257,6 +258,7 @@ export default function Home() {
           </div>
         )}
       </div>
+      <Footer />
     </div>
   );
 }
