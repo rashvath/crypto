@@ -1,14 +1,20 @@
-// src/app/currency-converter/page.tsx
+"use client";
+
 import CurrencyConverter from "@/components/CurrencyConverter";
+import { NavBar } from "@/components/navbar";
+import { useWishlist } from "@/context/WishlistContext";
 
 export default function CurrencyConverterPage() {
-  // These values should come from your crypto data
-  const cryptoPrice = 50000; // Example: Price of 1 BTC in USD
-  const cryptoName = "BTC"; // Crypto symbol
+  const cryptoPrice = 50000;
+  const cryptoName = "BTC";
+  const { wishlist } = useWishlist();
 
   return (
-    <div className="container mx-auto py-8">
-      <CurrencyConverter cryptoPrice={cryptoPrice} cryptoName={cryptoName} />
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <NavBar wishlistCount={wishlist.length} />
+      <main className="container mx-auto py-8">
+        <CurrencyConverter cryptoPrice={cryptoPrice} cryptoName={cryptoName} />
+      </main>
     </div>
   );
 }

@@ -1,10 +1,17 @@
 "use client";
 
-import { createContext, useContext, useState, ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  ReactNode,
+  useEffect,
+} from "react";
 
 interface WishlistContextType {
   wishlist: string[];
   toggleWishlist: (coinId: string) => void;
+  isInWishlist: (coinId: string) => boolean;
 }
 
 const WishlistContext = createContext<WishlistContextType | undefined>(
@@ -14,6 +21,19 @@ const WishlistContext = createContext<WishlistContextType | undefined>(
 export function WishlistProvider({ children }: { children: ReactNode }) {
   const [wishlist, setWishlist] = useState<string[]>([]);
 
+  // Load from localStorage on initial render
+  useEffect(() => {
+    const saved = localStorage.getItem("crypto-wishlist");
+    if (saved) {
+      setWishlist(JSON.parse(saved));
+    }
+  }, []);
+
+  // Save to localStorage whenever wishlist changes
+  useEffect(() => {
+    localStorage.setItem("crypto-wishlist", JSON.stringify(wishlist));
+  }, [wishlist]);
+
   const toggleWishlist = (coinId: string) => {
     setWishlist((prev) =>
       prev.includes(coinId)
@@ -22,8 +42,12 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
     );
   };
 
+  const isInWishlist = (coinId: string) => wishlist.includes(coinId);
+
   return (
-    <WishlistContext.Provider value={{ wishlist, toggleWishlist }}>
+    <WishlistContext.Provider
+      value={{ wishlist, toggleWishlist, isInWishlist }}
+    >
       {children}
     </WishlistContext.Provider>
   );

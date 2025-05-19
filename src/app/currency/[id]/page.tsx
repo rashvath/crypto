@@ -6,6 +6,7 @@ import { fetchCryptoDetails, fetchMarketChart } from "../../../lib/api";
 import Chart from "../../../components/Chart";
 import "../../globals.css";
 import CurrencyConverter from "@/components/CurrencyConverter";
+import { NavBar } from "@/components/navbar"; // <-- Import NavBar
 
 export default function CurrencyDetailPage() {
   const params = useParams();
@@ -67,84 +68,92 @@ export default function CurrencyDetailPage() {
 
   if (loading || !details || !chartData) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50 p-4">
-        <p className="text-gray-600 text-lg font-medium">Loading...</p>
-      </div>
+      <>
+        <NavBar wishlistCount={0} />{" "}
+        {/* Show NavBar with zero wishlist count while loading */}
+        <div className="flex items-center justify-center min-h-screen bg-gray-50 p-4">
+          <p className="text-gray-600 text-lg font-medium">Loading...</p>
+        </div>
+      </>
     );
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
-      <div className="flex flex-col md:flex-row gap-8">
-        {/* Left Side - Currency Details */}
-        <div className="w-full md:w-1/3 bg-white rounded-xl shadow-md p-6">
-          <div className="flex flex-col items-center">
-            {details.image?.large && (
-              <img
-                src={details.image.large}
-                alt={details.name}
-                width={120}
-                height={120}
-                className="rounded-full mb-4"
-                onError={(e) => {
-                  e.currentTarget.src = "/crypto-placeholder.png";
-                }}
-              />
-            )}
-            <h1 className="text-3xl font-bold mb-2 text-gray-900 text-center">
-              {details.name}
-            </h1>
-            <p className="text-gray-700 text-lg mb-6 uppercase tracking-wide">
-              {details.symbol}
-            </p>
+    <>
+      <NavBar wishlistCount={0} />{" "}
+      {/* Update wishlistCount as needed if you have context */}
+      <div className="max-w-6xl mx-auto p-6">
+        <div className="flex flex-col md:flex-row gap-8">
+          {/* Left Side - Currency Details */}
+          <div className="w-full md:w-1/3 bg-white rounded-xl shadow-md p-6">
+            <div className="flex flex-col items-center">
+              {details.image?.large && (
+                <img
+                  src={details.image.large}
+                  alt={details.name}
+                  width={120}
+                  height={120}
+                  className="rounded-full mb-4"
+                  onError={(e) => {
+                    e.currentTarget.src = "/crypto-placeholder.png";
+                  }}
+                />
+              )}
+              <h1 className="text-3xl font-bold mb-2 text-gray-900 text-center">
+                {details.name}
+              </h1>
+              <p className="text-gray-700 text-lg mb-6 uppercase tracking-wide">
+                {details.symbol}
+              </p>
 
-            <div className="w-full space-y-4">
-              <DetailItem
-                label="Current Price"
-                value={`$${details.market_data.current_price.usd.toLocaleString()}`}
-              />
-              <DetailItem
-                label="24h Change"
-                value={`${details.market_data.price_change_percentage_24h.toFixed(
-                  2
-                )}%`}
-                color={
-                  details.market_data.price_change_percentage_24h >= 0
-                    ? "text-green-600"
-                    : "text-red-600"
-                }
-              />
-              <DetailItem
-                label="Market Cap"
-                value={`$${details.market_data.market_cap.usd.toLocaleString()}`}
-              />
-              <DetailItem
-                label="24h Trading Volume"
-                value={`$${details.market_data.total_volume.usd.toLocaleString()}`}
-              />
-              <DetailItem
-                label="All-Time High"
-                value={`$${details.market_data.ath.usd.toLocaleString()}`}
-              />
-              <DetailItem
-                label="Circulating Supply"
-                value={`${details.market_data.circulating_supply.toLocaleString()} ${details.symbol.toUpperCase()}`}
-              />
+              <div className="w-full space-y-4">
+                <DetailItem
+                  label="Current Price"
+                  value={`$${details.market_data.current_price.usd.toLocaleString()}`}
+                />
+                <DetailItem
+                  label="24h Change"
+                  value={`${details.market_data.price_change_percentage_24h.toFixed(
+                    2
+                  )}%`}
+                  color={
+                    details.market_data.price_change_percentage_24h >= 0
+                      ? "text-green-600"
+                      : "text-red-600"
+                  }
+                />
+                <DetailItem
+                  label="Market Cap"
+                  value={`$${details.market_data.market_cap.usd.toLocaleString()}`}
+                />
+                <DetailItem
+                  label="24h Trading Volume"
+                  value={`$${details.market_data.total_volume.usd.toLocaleString()}`}
+                />
+                <DetailItem
+                  label="All-Time High"
+                  value={`$${details.market_data.ath.usd.toLocaleString()}`}
+                />
+                <DetailItem
+                  label="Circulating Supply"
+                  value={`${details.market_data.circulating_supply.toLocaleString()} ${details.symbol.toUpperCase()}`}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Right Side - Chart */}
+          <div className="w-full md:w-2/3 bg-white rounded-xl shadow-md p-6">
+            <h2 className="text-xl text-gray-800 font-semibold mb-4">
+              Price Chart (Last 30 Days)
+            </h2>
+            <div className="h-96">
+              <Chart data={chartData} />
             </div>
           </div>
         </div>
-
-        {/* Right Side - Chart */}
-        <div className="w-full md:w-2/3 bg-white rounded-xl shadow-md p-6">
-          <h2 className="text-xl text-gray-800 font-semibold mb-4">
-            Price Chart (Last 30 Days)
-          </h2>
-          <div className="h-96">
-            <Chart data={chartData} />
-          </div>
-        </div>
       </div>
-    </div>
+    </>
   );
 }
 
