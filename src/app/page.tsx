@@ -1,15 +1,24 @@
 "use client";
 
 import { fetchCryptoList } from "@/lib/api";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, memo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useWishlist } from "@/context/WishlistContext";
-import { Heart, Loader2 } from "lucide-react";
-import { useAuth, SignInButton, UserButton } from "@clerk/nextjs";
+import {
+  Heart,
+  Loader2,
+  Search,
+  X,
+  TrendingUp,
+  TrendingDown,
+} from "lucide-react";
+import { useAuth, SignInButton } from "@clerk/nextjs";
 import { NavBar } from "@/components/navbar";
 import toast, { Toaster } from "react-hot-toast";
 import Footer from "@/components/Footer";
+// import a simple sparkline chart component if you have one (optional)
+// import Sparkline from '@/components/Sparkline';
 
 interface CryptoCoin {
   id: string;
@@ -18,6 +27,7 @@ interface CryptoCoin {
   image?: string;
   current_price: number;
   price_change_percentage_24h: number;
+  // price_history?: number[]; // If you support sparklines
 }
 
 function ClientToastOnVisit() {
@@ -33,7 +43,6 @@ function ClientToastOnVisit() {
               t.visible ? "animate-enter" : "animate-leave"
             } max-w-md w-full bg-white text-gray-900 rounded-xl shadow-xl border border-gray-200 p-5 md:p-6 transition-all duration-300 relative`}
           >
-            {/* Close button */}
             <button
               onClick={() => toast.dismiss(t.id)}
               className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 text-xl font-semibold"
@@ -42,13 +51,9 @@ function ClientToastOnVisit() {
             >
               ×
             </button>
-
-            {/* Message */}
             <div className="mb-4 text-base md:text-lg font-semibold text-center">
               🔐 Sign in to add your favorite coins to the wishlist!
             </div>
-
-            {/* Sign In Button */}
             <div className="flex justify-center">
               <SignInButton>
                 <button
@@ -71,6 +76,99 @@ function ClientToastOnVisit() {
   return null;
 }
 
+// CoinCard: memoized for performance, animate on mount/hover
+const CoinCard = memo(function CoinCard({
+  coin,
+  isWishlisted,
+  toggleWishlist,
+}: {
+  coin: CryptoCoin;
+  isWishlisted: boolean;
+  toggleWishlist: (id: string) => void;
+}) {
+  return (
+    <div
+      key={coin.id}
+      tabIndex={0}
+      className="relative bg-white/70 dark:bg-gray-800/80 backdrop-blur-md rounded-xl shadow-lg p-6 group transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl focus-within:ring-2 focus-within:ring-yellow-400"
+    >
+      <div className="flex items-center gap-5">
+        {coin.image && (
+          <Image
+            src={coin.image}
+            alt={coin.name}
+            width={52}
+            height={52}
+            className="rounded-full border border-yellow-200 shadow"
+            loading="lazy"
+          />
+        )}
+        <div>
+          <Link
+            href={`/currency/${coin.id}`}
+            className="hover:underline"
+            tabIndex={-1}
+          >
+            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 group-hover:text-yellow-500 transition-colors">
+              {coin.name}
+            </h2>
+          </Link>
+          <p className="text-gray-500 dark:text-gray-400 uppercase tracking-wide font-medium">
+            {coin.symbol}
+          </p>
+        </div>
+      </div>
+      <div className="mt-5 flex items-center gap-2">
+        <p className="text-3xl font-extrabold text-gray-900 dark:text-gray-100 select-all">
+          ${coin.current_price.toLocaleString()}
+        </p>
+        {coin.price_change_percentage_24h >= 0 ? (
+          <TrendingUp className="w-5 h-5 text-green-500" />
+        ) : (
+          <TrendingDown className="w-5 h-5 text-red-500" />
+        )}
+        <p
+          className={`text-lg font-semibold ${
+            coin.price_change_percentage_24h >= 0
+              ? "text-green-500"
+              : "text-red-500"
+          }`}
+        >
+          {coin.price_change_percentage_24h >= 0 ? "+" : ""}
+          {coin.price_change_percentage_24h.toFixed(2)}%
+        </p>
+      </div>
+      {/* Optionally add a sparkline chart below */}
+      {/* coin.price_history && <Sparkline data={coin.price_history} /> */}
+      <button
+        onClick={(e) => {
+          e.preventDefault();
+          toggleWishlist(coin.id);
+        }}
+        className={`absolute top-5 right-5 p-2 rounded-full transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-yellow-400 group-heart
+          ${
+            isWishlisted
+              ? "text-red-500 scale-110"
+              : "text-gray-400 dark:text-gray-500"
+          }
+        `}
+        aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
+        aria-pressed={isWishlisted}
+      >
+        <Heart
+          className="w-6 h-6"
+          fill={isWishlisted ? "currentColor" : "none"}
+        />
+        {isWishlisted && (
+          <span className="absolute -top-2 -right-2 bg-yellow-400 text-white text-xs rounded-full px-2 py-0.5 shadow">
+            Wishlisted
+          </span>
+        )}
+      </button>
+    </div>
+  );
+});
+
 export default function Home() {
   const [cryptos, setCryptos] = useState<CryptoCoin[]>([]);
   const [loading, setLoading] = useState(true);
@@ -83,11 +181,8 @@ export default function Home() {
   useEffect(() => {
     const timerId = setTimeout(() => {
       setDebouncedSearchTerm(searchTerm);
-    }, 500);
-
-    return () => {
-      clearTimeout(timerId);
-    };
+    }, 400);
+    return () => clearTimeout(timerId);
   }, [searchTerm]);
 
   // Fetch crypto data
@@ -113,36 +208,11 @@ export default function Home() {
       coin.symbol.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
   );
 
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        <NavBar wishlistCount={wishlist.length} />
-        <div className="container mx-auto px-4 py-10 text-center">
-          <div className="bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900 rounded-lg p-6 max-w-2xl mx-auto">
-            <h2 className="text-xl font-semibold text-red-800 dark:text-red-200">
-              Error Loading Data
-            </h2>
-            <p className="mt-2 text-red-600 dark:text-red-300">{error}</p>
-            <button
-              onClick={() => window.location.reload()}
-              className="mt-4 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
-            >
-              Retry
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-gradient-to-tr from-yellow-50 via-white to-yellow-200 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800">
       {/* Toast container */}
       <Toaster position="top-right" />
-
-      {/* Toast on visit if not signed in */}
       <ClientToastOnVisit />
-
       <NavBar wishlistCount={wishlist.length} />
 
       <div className="container mx-auto px-4 py-10">
@@ -159,13 +229,34 @@ export default function Home() {
           </span>
         </h1>
 
-        <input
-          type="text"
-          placeholder="Type a coin to start your crypto adventure"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full md:w-1/2 mx-auto block px-4 py-3 mb-8 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-4 focus:ring-yellow-400 focus:border-yellow-400 transition duration-300 ease-in-out text-gray-900 dark:text-white dark:bg-gray-800"
-        />
+        <div className="relative w-full md:w-1/2 mx-auto mb-8">
+          <Search className="absolute left-3 top-3.5 text-gray-400 dark:text-gray-500 w-5 h-5" />
+          <input
+            type="text"
+            placeholder="Type a coin to start your crypto adventure"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-10 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-4 focus:ring-yellow-400 focus:border-yellow-400 transition duration-300 ease-in-out text-gray-900 dark:text-white dark:bg-gray-800"
+            aria-label="Search for cryptocurrencies"
+          />
+          {searchTerm && (
+            <button
+              className="absolute right-3 top-3.5 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+              onClick={() => setSearchTerm("")}
+              aria-label="Clear search"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
+        </div>
+
+        <div className="flex justify-between mb-6 items-center">
+          <span className="text-gray-600 dark:text-gray-400 text-sm ml-1">
+            Showing <strong>{filteredCryptos.length}</strong> of{" "}
+            {cryptos.length} coins
+          </span>
+          {/* You could add a sort/filter dropdown here */}
+        </div>
 
         {loading ? (
           <div className="flex flex-col justify-center items-center h-64">
@@ -173,6 +264,21 @@ export default function Home() {
             <p className="mt-4 text-lg text-gray-600 dark:text-gray-300">
               Loading cryptocurrency data...
             </p>
+          </div>
+        ) : error ? (
+          <div className="container mx-auto px-4 py-10 text-center">
+            <div className="bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900 rounded-lg p-6 max-w-2xl mx-auto">
+              <h2 className="text-xl font-semibold text-red-800 dark:text-red-200">
+                Error Loading Data
+              </h2>
+              <p className="mt-2 text-red-600 dark:text-red-300">{error}</p>
+              <button
+                onClick={() => window.location.reload()}
+                className="mt-4 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+              >
+                Retry
+              </button>
+            </div>
           </div>
         ) : filteredCryptos.length === 0 ? (
           <div className="text-center py-20">
@@ -187,73 +293,14 @@ export default function Home() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-8 animate-fadein">
             {filteredCryptos.map((coin) => (
-              <div
+              <CoinCard
                 key={coin.id}
-                className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 relative hover:shadow-2xl transition-all duration-300 group"
-              >
-                <div className="flex items-center gap-5">
-                  {coin.image && (
-                    <Image
-                      src={coin.image}
-                      alt={coin.name}
-                      width={52}
-                      height={52}
-                      className="rounded-full"
-                    />
-                  )}
-                  <div>
-                    <Link
-                      href={`/currency/${coin.id}`}
-                      className="hover:underline"
-                    >
-                      <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 group-hover:text-yellow-500 transition-colors">
-                        {coin.name}
-                      </h2>
-                    </Link>
-                    <p className="text-gray-500 dark:text-gray-400 uppercase tracking-wide font-medium">
-                      {coin.symbol}
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-5">
-                  <p className="text-3xl font-extrabold text-gray-900 dark:text-gray-100">
-                    ${coin.current_price.toLocaleString()}
-                  </p>
-                  <p
-                    className={`text-lg font-semibold ${
-                      coin.price_change_percentage_24h >= 0
-                        ? "text-green-500"
-                        : "text-red-500"
-                    }`}
-                  >
-                    {coin.price_change_percentage_24h >= 0 ? "+" : ""}
-                    {coin.price_change_percentage_24h.toFixed(2)}%
-                  </p>
-                </div>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    toggleWishlist(coin.id);
-                  }}
-                  className={`absolute top-5 right-5 p-2 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-400 ${
-                    isInWishlist(coin.id)
-                      ? "text-red-500 hover:text-red-700"
-                      : "text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
-                  }`}
-                  aria-label={
-                    isInWishlist(coin.id)
-                      ? "Remove from wishlist"
-                      : "Add to wishlist"
-                  }
-                >
-                  <Heart
-                    className="w-6 h-6"
-                    fill={isInWishlist(coin.id) ? "currentColor" : "none"}
-                  />
-                </button>
-              </div>
+                coin={coin}
+                isWishlisted={isInWishlist(coin.id)}
+                toggleWishlist={toggleWishlist}
+              />
             ))}
           </div>
         )}
